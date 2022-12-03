@@ -65,7 +65,7 @@ while True:
         for num in input_dict.keys():
             if values[index] == '':
                 values[index] = 0
-            values[index] = int(values[index])
+            values[index] = float(values[index])
             input_dict.update({num: values[index]})
             index += 1
         break
