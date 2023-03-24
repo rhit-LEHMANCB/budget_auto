@@ -27,7 +27,8 @@ wb.save(f"budget_backup_{current_date.strftime('%b-%d-%Y')}.xlsx")
 ws = wb.active
 
 layout = [
-    [sg.Text("Enter your values here")]
+    [sg.Text("Enter your values here")],
+    [sg.Text("Current year:"), sg.InputText()]
 ]
 
 input_dict = {}
@@ -52,16 +53,17 @@ if add_wealthscape:
 layout.append([sg.Button("Ok"), sg.Button("Cancel")])
 
 window = sg.Window('Program', layout)
-
+current_year = None
 wealthscape_file_path = None
 while True:
     event, values = window.read()
+    current_year = values[0]
     if event == sg.WIN_CLOSED or event == 'Cancel':
         print("User cancelled operation")
         window.close()
         sys.exit()
     elif event == "Ok":
-        index = 0
+        index = 1
         for num in input_dict.keys():
             if values[index] == '':
                 values[index] = 0
@@ -76,10 +78,17 @@ mkt_values = []
 window.close()
 if wealthscape_file_path is not None:
     with open(wealthscape_file_path) as f:
+        col_num = None
         reader = csv.reader(f, delimiter=',')
+        first_row = True
         for row in reader:
-            if len(row) >= 20 and row[20] != "Recent Market Value":
-                temp_str = row[20]
+            if first_row:
+                first_row = False
+                for i in range(len(row)):
+                    if row[i] == "Recent Market Value":
+                        col_num = i
+            if len(row) >= col_num and row[col_num] != "Recent Market Value":
+                temp_str = row[col_num]
                 temp_str = temp_str.replace('$', '')
                 temp_str = temp_str.replace(',', '')
                 mkt_values.append(float(temp_str))
@@ -143,17 +152,17 @@ for cell in bal_col:
     elif cell.value is not None and cell.value != "Balance" and cell.value != "Mkt Value":
         ws.conditional_formatting.add(bal_col_letter + str(cell_counter),
                                       CellIsRule(operator='between',
-                                                 formula=[f"$W{cell_counter}", f"$X{cell_counter}-.01"],
+                                                 formula=[f"$Y{cell_counter}", f"$Z{cell_counter}-.01"],
                                                  stopIfTrue=True,
                                                  font=green_font))
         ws.conditional_formatting.add(bal_col_letter + str(cell_counter),
                                       CellIsRule(operator='>=',
-                                                 formula=[f"$X{cell_counter}"],
+                                                 formula=[f"$Z{cell_counter}"],
                                                  stopIfTrue=True,
                                                  font=purple_font))
         ws.conditional_formatting.add(bal_col_letter + str(cell_counter),
                                       CellIsRule(operator='<',
-                                                 formula=[f"$W{cell_counter}"],
+                                                 formula=[f"$Y{cell_counter}"],
                                                  stopIfTrue=True,
                                                  font=red_font))
     if cell.data_type == "f":
@@ -172,13 +181,14 @@ for col in ws.iter_cols():
         sum_cols.append(col_letter)
     col_counter += 1
 
+print(current_year)
 average_col = ws[get_column_letter(avg_col_num + 2)]
 cell_counter = 0
 for cell in average_col:
     cell_counter += 1
-    if cell.value is not None and cell.value != 2022 and cell.value != "Average" and "AVERAGE" in cell.value:
-        cell.value = f"=AVERAGE(Y{cell_counter}:{bal_col_letter}{cell_counter})"
-    elif cell.value is not None and cell.value != 2022 and cell.value != "Average":
+    if cell.value is not None and cell.value != int(current_year) and cell.value != "Average" and "AVERAGE" in cell.value:
+        cell.value = f"=AVERAGE(AA{cell_counter}:{bal_col_letter}{cell_counter})"
+    elif cell.value is not None and cell.value != int(current_year) and cell.value != "Average":
         temp_str = "=("
         add_counter = 0
         for add in sum_cols:
